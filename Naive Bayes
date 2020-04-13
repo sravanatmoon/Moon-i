@@ -1,0 +1,85 @@
+def loadCsv():
+    lines = csv.reader(open('file.csv'))
+    data_set = list(lines)
+    for i in range(len(data_set)):
+        data_set[i] = [float(x) for x in data_set[i]]
+    return data_set
+def split_Data_set(data_set, splitRatio):
+    train_size = int(len(data_set)*splitRatio)
+    train_set = []
+    copy = list(data_set)
+    while len(train_set) < train_size:
+        index = random.randrange(len(copy))
+        train_set.append(copy.pop(index))
+    return [train_set, copy]
+def seperate_by_class(data_set):
+    seperated = {}
+    for i in range(len(data_set)):
+        vector = data_set[i]
+        if (vector[-1] not in seperated):
+            seperated[vector[-1]] = []
+        seperated[vector[-1]].append(vector)
+    return seperated
+def mean(numbers):
+    return sum(numbers)/float(len(numbers))
+def Std_dev(numbers):
+    avg = mean(numbers)
+    variance = sum([pow(x-avg, 2) for x in numbers])/float(len(numbers)-1)
+    return math.sqrt(variance)
+def summarize(data_set):
+    summaries = [(mean(attribute), Std_dev(attribute)) for attribute in zip(*data_set)]
+    del summaries[-1]
+    return summaries
+def summarize_by_class(data_set):
+    seperated = seperate_by_class(data_set)
+    summaries = {}
+    for class_value, instances in seperated.items():
+        summaries[class_value] = summarize(instances)
+    return summaries
+def calculateProbability(x, mean, Std_Dev):
+    exponent = math.exp(-(math.pow(x - mean, 2) / (2 * math.pow(Std_Dev, 2))))
+    return (1 / (math.sqrt(2*math.pi) * Std_Dev)) * exponent
+def calculateClassProbability(summaries, input_vector):
+    probabilities = {}
+    for Class_value, ClassSummaries in summaries.items():
+        probabilities[Class_value] = 1
+        for i in range(len(ClassSummaries)):
+            mean, Std_dev = ClassSummaries[i]
+            x= input_vector[i]
+            probabilities[Class_value] *= calculateProbability(x, mean, Std_dev)
+        return probabilities
+def predict(summaries, inputvector):
+    probabilities = calculateClassProbability(summaries, inputvector)
+    bestLabel, bestprob = None, -1
+    for classvalue, probability in probabilities.items():
+        if bestLabel is None or probability > bestprob:
+            bestprob = probability
+            bestLabel = classvalue
+    return bestLabel
+def getPredictions(summaries, testset):
+    predictions = []
+    for i in range(len(testset)):
+        result = predict(summaries, testset[i])
+        predictions.append(result)
+    return predictions
+def GetAccuracy(testset, predictions):
+    correct = 0
+    for x in range(len(testset)):
+        if testset[x][-1] == predictions[x]:
+            correct += 1
+    return (correct/float(len(testset)))*100.0
+def main():
+    filename = 'pima-indians-diabetes.csv'
+    splitRatio = 0.6
+    data_set = loadCsv()
+    trainingset, testset = split_Data_set(data_set, splitRatio)
+    a, b, c = len(data_set), len(trainingset), len(testset)
+    print(f'split {a} rows into train - {b} rows and test - {c}')
+    #prepared model
+    summaries = summarize_by_class(trainingset)
+    #test model
+    predictions = getPredictions(summaries, testset)
+    accuracy = GetAccuracy(testset, predictions)
+    print(f'Accuracy : {accuracy}')
+
+main()
