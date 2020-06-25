@@ -1,37 +1,25 @@
 import sys
-from matplotlib import pyplot as plt
-
+from copy import deepcopy
+from statistics import stdev
 import numpy as np
-import sklearn.preprocessing
-from numpy.distutils.system_info import p
-from sklearn.preprocessing import scale
-
-import LinearRegression
-from sklearn import linear_model
-
-from io_handling import open_output
+from sklearn.linear_model import LinearRegression
 
 
-def import_and_scale_training_data(input_file_path, with_bias_column=True):
-    raw_data = np.loadtxt(input_file_path, delimiter=',')
-    scale_data = True
 
-    age = raw_data[:, [0]]
-    weight = raw_data[:, [1]]
-    heights = raw_data[:, [2]].flatten()
-    if scale_data:
-        age = scale(raw_data[:, [0]])
-        weight = scale(raw_data[:, [1]])
-        heights = scale(raw_data[:, [2]]).flatten()
 
-    if with_bias_column:
-        rows = raw_data.shape[0]
-        intercept_column = np.ones(rows)
-        intercept_column.shape = (rows, 1)
-        data = np.hstack((intercept_column, age, weight))
-    else:
-        data = np.hstack((age, weight))
-    return data, heights
+def formulate_matrix(file):  # xn will be (n*d) matrix
+    Data = np.empty((0, 3), float)
+    with open(file, mode='r') as f:  # The file will be f from now on.
+        lines = f.read().splitlines()
+        for line in lines:
+            Data = np.append(Data, [[float(val) for val in line.split(',')]], axis=0)
+        features, Y = Data[:, 0:2], deepcopy(Data[:, 2])
+        Data[:, 2] = Data[:, 2] / Data[:, 2]
+        features = Data[:, 0:3]
+        features[:, [0, 2]] = features[:, [2, 0]]
+    for i in [1, 2]:
+        features[:, i] = (features[:, i]) / stdev(features[:, i])
+    return features, Y
 
 
 def showGraph(data, heights, weights):
@@ -63,15 +51,15 @@ def showGraph(data, heights, weights):
 
 
 def main():
-    data, heights = import_and_scale_training_data(sys.argv[1])
-    of = open_output(sys.argv[2])
+    data, heights = formulate_matrix('input2.csv')
+    of = open('Output2.csv', mode='w')
     for iterations, alpha in [(100, 0.001), (100, 0.005), (100, 0.01),
                               (100, 0.05), (100, 0.1), (100, 0.5),
                               (100, 1), (100, 5), (100, 10), (1000, 0.0005)]:
-        lr = LinearRegression.LinearRegressor(iterations=iterations, alpha=alpha, of=of)
-        lr.fit(data, heights)
+        lr = LinearRegression()
+        lr.fit(data, heights, )
     of.close()
-
+    showGraph(data, heights)
 
 if __name__ == "__main__":
     main()

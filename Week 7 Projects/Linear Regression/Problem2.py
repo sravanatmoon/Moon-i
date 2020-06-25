@@ -70,21 +70,24 @@ def Regression():
     X, Y = formulate_matrix('input2.csv')
 
     with open('Output2.csv', mode='w') as f:
-        for α in [0.01*i for i in range(100)]:# [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 0.0002]:
-            β = np.ones(3)
-            R, Rp, itr = -math.inf, 0, 0
+        for α in [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 0.0005]:
+            β = np.zeros(3)
+            R, Rp, itr, R_list = -math.inf, 0, 0, []
             m = 1000 if α == 0.0002 else 100
-            while abs(Rp - R) >= 0.0001:
+            while itr <= 1000:
                 fx = np.zeros(1)
                 for i in range(len(X)):
                     fxi = np.dot(β, X[i])
                     fx = np.append(fx, [fxi], axis=0)
                 Rp = deepcopy(R)
                 R, β = RSS(fx, Y), update_betas(α, β, X, Y, fx)
-                itr +=1
-            f.write(f'a :{α}' + ',' + f'Iterations: {itr} : ' + str(β[0]) + ',' + str(β[1]) + ',' + str(β[2]) + ',' + str(
-                R) + '\n')
-            # showGraph(X, Y, β)
+                itr += 1
+            f.write(
+                f'a :{α}' + ',' + f'Iterations: {itr} : ' + str(β[0]) + ',' + str(β[1]) + ',' + str(β[2]) + ',' + str(
+                    R) + '\n')
+            R_list.append(R)
+        print(min(R_list))
+    showGraph(X, Y, β)
 
 
 if __name__ == "__main__":

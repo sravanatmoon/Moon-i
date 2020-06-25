@@ -1,29 +1,23 @@
 import sys
 
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import train_test_split
-from sklearn.neighbors import KNeighborsClassifier
+import matplotlib.pyplot as plt
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier as RFC
+from sklearn.linear_model import LogisticRegression as lr
+from sklearn.neighbors import KNeighborsClassifier as KNN
+from sklearn.tree import DecisionTreeClassifier as DTC
 
-from io_handling import open_output
 
-
-def import_and_scale_training_data(input_file_path, with_bias_column=False):
-    raw_data = np.loadtxt(input_file_path, delimiter=',', skiprows=1)
-    x_train, x_test, y_train, y_test = train_test_split(raw_data[:, [0, 1]], raw_data[:, [2]].flatten(), test_size=0.4,
-                                                        random_state=42)
+def formulate_data(file):
+    Data = np.loadtxt(file, delimiter=',')
+    x_train, x_test, y_train, y_test = train_test_split(Data[:, [0, 1]], Data[:, [2]].flatten(),
+                                                        test_size=0.4, random_state=42)
     return x_train, x_test, y_train, y_test
 
 
 def showGraph(test_data, test_labels, clf):
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from sklearn import svm, datasets
-
     # import some data to play with
     X = test_data[:, :2]  # we only take the first two features. We could
     # avoid this ugly slicing by using a two-dim dataset
@@ -41,12 +35,12 @@ def showGraph(test_data, test_labels, clf):
     # plt.subplots_adjust(wspace=0.4, hspace=0.4)
     Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
 
-        # Put the result into a color plot
+    # Put the result into a color plot
     Z = Z.reshape(xx.shape)
-    plt.contourf(xx, yy, Z, cmap=plt.cm.coolwarm)
+    plt.contourf(xx, yy, Z)
 
     # Plot also the training points
-    plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.coolwarm)
+    plt.scatter(X[:, 0], X[:, 1], c=y)
     plt.xlabel('A')
     plt.ylabel('B')
     plt.xlim(xx.min(), xx.max())
@@ -64,100 +58,104 @@ def showGraph(test_data, test_labels, clf):
     # plt.scatter(data[:, [1]], data[:, [2]], c=colormap[labs], s=20)
     # plt.show()
 
-
-def report(output_stream, classifier_name, best_score, test_score):
-    print("%s, %0.2f, %0.2f" % (classifier_name, best_score, test_score))
-    # output_stream.write("%s, %0.2f, %0.2f" % (classifier_name, best_score, test_score))
-
-
-def run_model(estimator, params, training_data, test_data, training_labels, test_labels, classifier_name,
-              output_stream):
-    clf = GridSearchCV(estimator, params, n_jobs=-1)
-    clf.fit(training_data, training_labels)
-    best_score = clf.best_score_
-    test_score = clf.score(test_data, test_labels)
-    report(output_stream, classifier_name, best_score, test_score)
-
-
-def svm_with_linear_kernel(training_data, training_labels, test_data, test_labels, of):
+"""
+def svm_linear(Data):
     params = {
         'C': [0.1, 0.5, 1, 5, 10, 50, 100],
-        'degree': [4, 5, 6],
-        'gamma': [0.1, 1],
         'kernel': ['linear']
     }
-    run_model(SVC(), params, training_data, test_data, training_labels, test_labels, 'svm_linear', of)
+    return Estimate(SVC(), params, Data)
 
 
-def svm_with_polynomial_kernel(training_data, training_labels, test_data, test_labels, of):
+def svm_polynomial(Data):
     params = {
         'C': [0.1, 1, 3],
         'degree': [4, 5, 6],
-        'gamma': [0.1, 1],
+        'gamma': [0.1, 0.5],
         'kernel': ['poly']
     }
-    run_model(SVC(), params, training_data, test_data, training_labels, test_labels, 'svm_polynomial', of)
+    return Estimate(SVC(), params, Data)
 
 
-def svm_with_rbf_kernel(training_data, training_labels, test_data, test_labels, of):
+def svm_rbf(Data):
     params = {
         'C': [0.1, 0.5, 1, 5, 10, 50, 100],
         'gamma': [0.1, 0.5, 1, 3, 6, 10],
         'kernel': ['rbf']
     }
-    run_model(SVC(), params, training_data, test_data, training_labels, test_labels, 'svm_rbf', of)
+    return Estimate(SVC(), params, Data)
 
 
-def logistic_regression(training_data, training_labels, test_data, test_labels, of):
+def logistic(Data):
     params = {
         'C': [0.1, 0.5, 1, 5, 10, 50, 100],
-        'solver': ['liblinear']
     }
-    run_model(LogisticRegression(), params, training_data, test_data, training_labels, test_labels, 'logistic', of)
+    return Estimate(lr(), params, Data)
 
 
-def k_nearest_neighbors(training_data, training_labels, test_data, test_labels, of):
+def knn(Data):
     params = {
         'n_neighbors': range(1, 51),
         'leaf_size': range(5, 65, 5),
-        'algorithm': ['auto']
     }
-    run_model(KNeighborsClassifier(), params, training_data, test_data, training_labels, test_labels, 'knn', of)
+    return Estimate(KNN(), params, Data)
 
-def decision_trees(training_data, training_labels, test_data, test_labels, of):
+
+def decision_tree(Data):
     params = {
         'max_depth': range(1, 51),
         'min_samples_split': range(2, 11)
     }
-    run_model(DecisionTreeClassifier(), params, training_data, test_data, training_labels, test_labels, 'decision_tree', of)
+    return Estimate(DTC(), params, Data)
 
-def random_forest(training_data, training_labels, test_data, test_labels, of):
+
+def random_forest(Data):
     params = {
         'max_depth': range(1, 51),
         'min_samples_split': range(2, 11)
     }
-    run_model(RandomForestClassifier(), params, training_data, test_data, training_labels, test_labels, 'random_forest', of)
+    return Estimate(RFC(), params, Data)
+
+
+def Estimate(Method, params, Data):
+    clf = GridSearchCV(Method, params, n_jobs=-1)
+    clf.fit(Data[0], Data[2])
+    best_score = clf.best_score_
+    test_score = clf.score(Data[1], Data[3])
+    return best_score, test_score
+"""
+
+functions = [SVC, SVC, SVC, lr, KNN, DTC, RFC]
+
+Methods = {'svm_linear': {'C': [0.1, 0.5, 1, 5, 10, 50, 100],
+                          'kernel': ['linear']},
+           'svm_polynomial': {'C': [0.1, 1, 3],
+                              'degree': [4, 5, 6],
+                              'gamma': [0.1, 0.5],
+                              'kernel': ['poly']},
+           'svm_rbf': {'C': [0.1, 0.5, 1, 5, 10, 50, 100],
+                       'gamma': [0.1, 0.5, 1, 3, 6, 10],
+                       'kernel': ['rbf']},
+           'logistic': {'C': [0.1, 0.5, 1, 5, 10, 50, 100], },
+           'knn': {'n_neighbors': range(1, 51),
+                   'leaf_size': range(5, 65, 5), },
+           'decision_tree': {'max_depth': range(1, 51),
+                             'min_samples_split': range(2, 11)},
+           'random_forest': {'max_depth': range(1, 51),
+                             'min_samples_split': range(2, 11)}
+           }
 
 
 def main():
-    training_data, test_data, training_labels, test_labels = import_and_scale_training_data(sys.argv[1])
+    Data, i = formulate_data('input3.csv'), 0
     # showGraph(data, labels)
-    of = open_output(sys.argv[2])
-    funcs = [
-          svm_with_linear_kernel
-        , svm_with_polynomial_kernel
-        , svm_with_rbf_kernel
-        , logistic_regression
-        , k_nearest_neighbors
-        , decision_trees
-        , random_forest
-    ]
-    wip = [
-        logistic_regression
-    ]
-    for fn in funcs:
-        fn(training_data, training_labels, test_data, test_labels, of)
-    of.close()
+    with open('Output3.csv', mode='w') as f:
+        for method in Methods:
+            clf = GridSearchCV(functions[i](), Methods[method], n_jobs=-1)
+            clf.fit(Data[0], Data[2])
+            best_score, test_score = clf.best_score_, clf.score(Data[1], Data[3])
+            f.write(str(method) + ',' + str(best_score) + ',' + str(test_score)+'\n')
+            i += 1
 
 
 if __name__ == "__main__":
